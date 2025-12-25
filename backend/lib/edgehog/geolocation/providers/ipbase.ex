@@ -27,16 +27,16 @@ defmodule Edgehog.Geolocation.Providers.IPBase do
   alias Edgehog.EdgehogTeslaClient
   alias Edgehog.Geolocation.Position
 
+  @device_status_attributes [:last_connection, :last_disconnection, :last_seen_ip]
+
   @impl Edgehog.Geolocation.GeolocationProvider
   def geolocate(%Device{} = device) do
-    with {:ok, device} <- Ash.load(device, :device_status),
-         :ok <- validate_device_status_exists(device.device_status) do
+    with {:ok, device_status} <- fetch_device_status(device) do
       %{
         last_seen_ip: last_seen_ip,
         last_connection: last_connection,
         last_disconnection: last_disconnection
-      } =
-        device.device_status
+      } = device_status
 
       last_seen_timestamp =
         [last_connection, last_disconnection]
@@ -46,6 +46,26 @@ defmodule Edgehog.Geolocation.Providers.IPBase do
 
       geolocate_ip(last_seen_ip, last_seen_timestamp)
     end
+  end
+
+  defp fetch_device_status(%Device{} = device) do
+    if uninitialized?(device) do
+      with {:ok, device_data} <- Ash.load(device, :device_status),
+           :ok <- validate_device_status_exists(device_data.device_status) do
+        {:ok, device_data.device_status}
+      end
+    else
+      {:ok,
+       %{
+         last_seen_ip: device.last_seen_ip,
+         last_connection: device.last_connection,
+         last_disconnection: device.last_disconnection
+       }}
+    end
+  end
+
+  defp uninitialized?(device) do
+    Enum.any?(@device_status_attributes, &(Map.get(device, &1) == nil))
   end
 
   defp validate_device_status_exists(nil), do: {:error, :device_status_not_found}

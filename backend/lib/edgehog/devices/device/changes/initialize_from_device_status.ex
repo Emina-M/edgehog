@@ -22,7 +22,7 @@ defmodule Edgehog.Devices.Device.Changes.InitializeFromDeviceStatus do
   @moduledoc false
   use Ash.Resource.Change
 
-  @device_status_attributes [:last_connection, :last_disconnection, :online]
+  @device_status_attributes [:last_connection, :last_disconnection, :online, :last_seen_ip]
 
   @impl Ash.Resource.Change
   def change(changeset, _opts, _context) do
